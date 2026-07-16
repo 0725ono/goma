@@ -1,0 +1,25 @@
+{
+  "name": "Family Schedule API Dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-spring-boot-dashboard" // Java開発用に追加をおすすめします
+      ]
+    }
+  },
+
+  // 8080: Java API, 5432: PostgreSQL（モバイルはホストで実行するため 8081 は不要）
+  "forwardPorts": [8080, 5432],
+  "remoteUser": "vscode"
+}

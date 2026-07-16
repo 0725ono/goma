@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  # 開発用ワークスペース（ここにVS Codeが接続します）
+  workspace:
+    image: mcr.microsoft.com/devcontainers/base:ubuntu
+    volumes:
+      # ホスト側のカレントディレクトリをコンテナ内の /workspace に同期
+      - .:/workspace:cached
+    # コンテナが終了しないように永続化
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    ports:
+      - "8080:8080" # Spring Boot用（Expo はホストで実行するため 8081 は公開しない）
+    depends_on:
+      - db
+
+  # データベース
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: family_schedule
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

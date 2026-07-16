@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "📱 Mobile (Expo)",
+      "path": "mobile",
+    },
+    {
+      "name": "⚙️ API (Java)",
+      "path": "api",
+    },
+    {
+      "name": "📁 Root",
+      "path": ".",
+    },
+  ],
+  "settings": {},
+}
