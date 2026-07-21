@@ -1,5 +1,12 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(set -e)",
+      "Bash(git rm *)",
+      "Bash(git commit -q -m 'chore: stop tracking local Claude settings *)"
+    ]
   }
 }
