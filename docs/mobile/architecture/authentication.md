@@ -131,24 +131,31 @@ Java がやるのは **「この JWT は本当に Firebase が発行したもの
 ## 7. feature-based での実装の継ぎ目
 
 Context のバケツリレーは使わず、**セッションは Zustand の 1 ストア**で全画面が直接参照する。
+**セッションは feature ではなく基盤（`lib/session`）に置く**（api クライアント・ガード・ヘッダなどアプリ全体が依存するため）。
 **Bearer 付与は api クライアントの 1 箇所**に集約し、呼び出しごとにトークン処理を散らさない。
 
 ```
 src/
-  features/auth/
-    store.ts        # Zustand: session状態(status, user)。全画面が参照 → prop-drilling 無し
-    signIn.ts       # signIn()/signOut()。中身は後で Firebase 呼び出しに差し替え
-    getToken.ts     # ← 認証の唯一の継ぎ目。getToken(): Promise<string|null>
-    useSession.ts   # 画面が使うフック
-  shared/lib/api/
-    client.ts       # fetch ラッパ。1 箇所で getToken() を呼び Bearer 付与（インターセプタ）
-app/
-  _layout.tsx       # session状態で (public)/(private) を出し分け（ルートガード）
+  lib/session/        # 基盤（誰でも依存してよい）。バレル index.ts から公開
+    store.ts          # Zustand: session状態(status, token) → prop-drilling 無し
+    signIn.ts         # signIn()/signOut()。中身は後で Firebase 呼び出しに差し替え
+    getToken.ts       # ← 認証の唯一の継ぎ目。getToken(): Promise<string|null>（hookにしない）
+    useSession.ts     # 画面/ガードが使うフック
+  lib/api/
+    client.ts         # fetch ラッパ。1 箇所で getToken() を呼び Bearer 付与（インターセプタ）
+  features/auth/       # auth 機能（サインイン画面・フォーム）。lib/session を利用
+  components/
+    SignOutButton/    # lib/session の signOut を呼ぶ（基盤依存＝OK）
+    AppHeader/        # 純粋 UI。right スロットに SignOutButton を注入して合成
+  app/
+    _layout.tsx       # session状態で (public)/(private) を出し分け（ルートガード）
+    (private)/_layout.tsx  # AppHeader に SignOutButton を注入（app 層で合成）
 ```
 
-- **セッション** = Zustand の 1 ストア。どの画面も直接読む。
-- **Bearer 付与** = `shared/lib/api` の 1 箇所。React Query の queryFn はこの client を通すだけ。
-- **ルートガード** = `app/_layout` が session を見てリダイレクト。feature は状態更新のみ、遷移は router が担う。
+- **セッション** = `lib/session` の Zustand ストア（基盤）。どの層も直接読む。
+- **Bearer 付与** = `lib/api` の 1 箇所。React Query の queryFn はこの client を通すだけ。
+- **ルートガード** = `src/app/_layout` が session を見て出し分け（v56 の `Stack.Protected`）。feature は状態更新のみ、遷移は router が担う。
+- **副作用の集約** = `signOut` のトークン消去などは `lib/session` 内に閉じ込め、UI（SignOutButton）は関数を呼ぶだけにする。
 
 ---
 
