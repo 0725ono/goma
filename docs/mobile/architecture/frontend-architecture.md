@@ -26,34 +26,68 @@ DDD / クリーンアーキとの間で検討し、複雑さの出どころの�
 
 ## 2. ディレクトリ構成
 
-`app/` は expo-router のルーティング配線に限定し、ロジックは `src/` 側に置く。
+**ルーティング（`src/app/`）と実装（`src/features/` ほか）を分離する。** ルートディレクトリは Expo Router の `src/app` を使う（SDK 55+ の既定形。root の `app` より優先される）。
 
 ```
 mobile/
-  app/                     # expo-router のルート（配線のみ）
-    (public)/signin.tsx    #   未ログイン領域
-    (private)/index.tsx    #   ログイン後領域
-    _layout.tsx            #   セッション状態で (public)/(private) を出し分け（ルートガード）
   src/
-    features/              # 機能単位。画面・部品・状態・型・ルールを機能ごとに同居
-      auth/                #   認証（セッション・ログイン・トークン継ぎ目）
-      calendar/            #   カレンダー（Event/Task モデル + 表示）
-    shared/                # 横断的に再利用するものだけを置く
-      ui/                  #   汎用 UI 部品
-      lib/                 #   api クライアント等の横断ロジック
-      config/              #   環境設定・定数
+    app/                       # ルーティングのみ。URL/ルート木を写すだけ（薄く保つ）
+      (public)/signin.tsx      #   → features/auth の画面部品を呼ぶだけ
+      (private)/index.tsx      #   → 各機能の画面部品を呼ぶだけ
+      _layout.tsx              #   ルートガード（session に応じて出し分け）
+      +not-found.tsx           #   → components の NotFoundPage を呼ぶだけ
+    features/                  # 機能（ドメイン）単位。画面・部品・型・ルールを同居
+      auth/                    #   サインインの画面・フロー（セッション状態は持たない）
+      calendar/
+    components/                # アプリ横断で使い回す汎用 UI（AppHeader, SignOutButton 等）
+    hooks/                     # アプリ横断で使い回す汎用フック
+    lib/                       # アプリ横断の基盤（非UIロジック）。誰でも依存してよい
+      api/                     #   api クライアント
+      session/                 #   セッション：Zustand ストア・signIn/signOut・getToken・useSession
+    constants/                 # 定数・テーマ
+  app.json / tsconfig.json / metro.config.js / package.json   # 設定ファイルは root に据え置き
 ```
 
-各 feature の内部構成の目安：
+- 設定ファイル（`app.json` / `package.json` / `metro.config.js` / `tsconfig.json`）と `public/` は **root に残す**。
+- tsconfig の path エイリアスは **`@/*` → `./src/*`** に設定する（`@/features/auth/...` の形で参照）。
+
+### ルートファイルは薄く保つ（原則）
+
+`src/app/` の各ファイルは**ルート木を写すだけ**にし、中身は features / components の部品を呼ぶだけにする。ロジック・スタイル・フォーム定義をルートファイルに直書きしない。
+
+```tsx
+// src/app/(public)/signin.tsx — 例（薄いルートファイル）
+export { default } from "@/features/auth/screens/SignInScreen";
+```
+
+`+not-found.tsx` が `NotFoundPage` を呼ぶ形が、このルールの基準例。
+
+### feature の内部構成（例：auth）
+
+feature は「画面」ではなく「ドメイン」で切る（`signin` ではなく `auth`。sign-in / sign-up などの画面・フローを内包する）。**セッション状態そのもの（ログイン状態・トークン・signIn/out）は feature ではなく基盤（`lib/session`）に置き**、auth はそれを利用する（下記「session は基盤」を参照）。
 
 ```
-features/<feature>/
-  components/   # その機能の UI 部品
-  hooks/        # その機能のロジック（状態・副作用）
-  model/        # ドメイン型 + 純粋関数（§4 参照）
-  api/          # その機能の API 呼び出し（React Query の queryFn 等）
-  store.ts      # その機能のクライアント状態（Zustand。必要な機能のみ）
+features/auth/
+  screens/
+    SignInScreen/
+      SignInScreen.tsx       # 画面の組み立て
+      index.ts               # export { default } from "./SignInScreen";
+  components/
+    SignInForm/
+      SignInForm.tsx         # その機能の UI 部品（StyleSheet は末尾に同居でよい）
+      index.ts               # export { SignInForm } from "./SignInForm";
+  hooks/useSignInForm.ts     # フォームのロジック（RHF setup + onSubmit。lib/session の signIn を呼ぶ）
+  model/schema.ts            # zod スキーマ + 型
 ```
+
+### session は「機能」ではなく「基盤」
+
+ログイン状態・トークン・`signIn`/`signOut`/`getToken`/`useSession` は、api クライアント・ルートガード・ヘッダなど**アプリ全体が依存する土台**なので、feature ではなく `lib/session`（基盤）に置く。これを feature に閉じ込めると「他が使う＝feature への越境」を招く。基盤に置けば、誰が依存しても向きは `→ lib/session` で正しい。
+
+- `signOut` などの副作用（トークン消去等）は `lib/session` の中に集約し、UI はその関数を呼ぶだけにする（UI にストレージ消去などを直書きしない）。
+- サインアウトボタンのような汎用 UI（`components/SignOutButton`）は基盤 `lib/session` に依存してよい。純粋な `components/AppHeader` に対しては、`right` スロットへ app 層（`(private)/_layout`）が `SignOutButton` を注入して合成する。
+
+**コンポーネント/画面は「フォルダ + `index.ts` バレル」で 1 単位にする。** 各フォルダの `index.ts` から re-export し、import はフォルダパスで行う（例：`@/features/auth/components/SignInForm`）。実体ファイル名の変更や内部ファイル追加が、外部の import に波及しない。`src/components/errors/NotFoundPage/` も同じ形。
 
 ---
 
@@ -61,16 +95,16 @@ features/<feature>/
 
 本プロジェクトで守るべき原則は以下。
 
-1. **Colocation（近くに置く）。** ある機能に属す画面・部品・状態・型・ルールは、その feature フォルダにまとめて置く。「components に全部品、hooks に全 hook、utils に全関数」という種類別フォルダは採らない。
-2. **feature 同士は直接依存しない。** 共有したいものは `shared/` に降ろす。feature A が feature B の内部を import しない。
-3. **`shared/` は薄く保つ。** 「2 つ以上の feature が実際に使っている」ものだけを降ろす。1 箇所でしか使わないものは feature 内に留める。
+1. **Colocation（近くに置く）。** ある機能に属す画面・部品・状態・型・ルールは、その feature フォルダにまとめて置く。「components に全部品、hooks に全 hook」という**種類別ダンプは feature 内では作らない**。
+2. **feature 同士は直接依存しない。** 複数 feature で共有したくなったものは、性質に応じて top-level へ降ろす（汎用 UI → `components`、汎用フック → `hooks`、非UIの基盤 → `lib`）。feature A が feature B の内部を import しない。**「複数 feature が依存する土台」は feature ではなく基盤（`lib`）に置く**（例：セッションは `lib/session`）。境界を誤って基盤を feature に閉じ込めると越境が生じる。
+3. **top-level の `components` / `hooks` / `lib` は「アプリ横断のものだけ」に限定する。** 機能固有の部品・フックは必ず feature 内へ。ここを緩めると種類別ダンプに逆戻りする。1 箇所でしか使わないものは feature 内に留める。
 4. **依存の向きは一方向とする。**
 
 ```
-app/ (ルーティング)  →  features/  →  shared/
+src/app/ (ルーティング)  →  features/  →  components / hooks  →  lib（基盤：api, session）
 ```
 
-逆流（`shared` が feature を知る、`feature` が `app` を知る）を作らない。依存の向きを制御するという考え方はクリーンアーキから取り入れる（層は設けないが、向きは規定する）。
+`lib`（基盤）は最も依存される層で、内部（features 等）には依存しない。逆流（`lib` や `components` が feature を知る、`feature` が `app` を知る）を作らない。依存の向きを制御するという考え方はクリーンアーキから取り入れる（層は設けないが、向きは規定する）。
 
 ---
 
@@ -104,6 +138,11 @@ features/calendar/model/
 
 サーバーデータは Zustand に持たせない。キャッシュ・再取得・ローディング・エラーの管理は React Query が担う。
 
+### hook にするもの / しないもの
+
+- **React の状態・再描画に反応して使うもの → hook**（例：`useSession`、Zustand セレクタ）。
+- **命令的に呼ぶ／React の外から呼ぶもの → ただの関数**（例：`signIn`、`getToken`）。`getToken` は `lib/api` の fetch ラッパ（React ではない）から呼ぶため、関数のままにする。
+
 ### 導入タイミング（段階化）
 
 採用は確定。ただし各ライブラリは最初に必要になった箇所で導入する。
@@ -118,11 +157,12 @@ features/calendar/model/
 
 ## 6. 反パターン（避ける構成）
 
-- 巨大な共通 `components/` / `utils/`（種類別フォルダ）
-- feature 間の相互 import
-- 1 箇所でしか使わないものの `shared/` への早期移動
+- ルートファイル（`src/app/`）にロジック・スタイル・フォーム定義を直書きする
+- top-level の巨大な `components/` / `hooks/`（機能固有まで入れた種類別ダンプ）
+- feature 同士の相互 import
+- 1 箇所でしか使わないものの top-level への早期移動
 - サーバーデータを Zustand に抱え込む
-- ルーティング（`app/`）にビジネスロジックを書く
+- feature を「画面」単位で切る（`signin`）。「ドメイン」単位（`auth`）で切る
 
 ---
 
@@ -132,7 +172,7 @@ features/calendar/model/
 
 ### ゴール（UI のみ）
 
-- `(public)/signin` をデザイン込みで整える。
+- `src/app/(public)/signin` をデザイン込みで整える（中身は feature の部品）。
 - ログインボタンは認証せず、セッションを立てて `(private)` へ遷移させる（[authentication.md](./authentication.md) のスタブを利用）。
 - `(private)` の遷移後画面が表示される。この画面はカレンダーである必要はない（カレンダー描画は次段階の確認テーマ）。
 
@@ -142,19 +182,19 @@ features/calendar/model/
 - データの永続化 / API 呼び出し / React Query
 - カレンダー本実装
 
-### この段階で用意する継ぎ目
+### この段階で用意する置き場所・継ぎ目
 
-後から本実装を差し込めるよう、以下の継ぎ目をスタブで用意する（詳細は [authentication.md](./authentication.md)）。
+後から本実装を差し込めるよう、以下をスタブで用意する（詳細は [authentication.md](./authentication.md)）。
 
-- `features/auth` のセッションストア（Zustand）
-- `signIn()` / `signOut()`（中身はダミー）
-- `getToken()`（ダミー値を返す。将来 Firebase の `getIdToken()` に差し替え）
-- `shared/lib/api` の API クライアント（Bearer 付与は 1 箇所に集約）
-- `app/_layout` のルートガード
+- `src/lib/session/`（基盤：`store` = Zustand セッション、`signIn`/`signOut`、`getToken`、`useSession`。バレル `index.ts` から公開）
+- `src/features/auth/screens/SignInScreen/` ＋ `components/SignInForm/` ＋ `hooks/useSignInForm.ts` ＋ `model/schema.ts`（auth 機能。`lib/session` を利用）
+- `src/lib/api/client.ts`（Bearer 付与を 1 箇所に集約。`lib/session` の getToken を使う）
+- `src/components/AppHeader/`（純粋 UI）＋ `src/components/SignOutButton/`（`lib/session` の signOut を呼ぶ）
+- `src/app/_layout.tsx` のルートガード（`lib/session` の useSession を参照）、`(private)/_layout.tsx` で AppHeader に SignOutButton を注入、各ルートは薄く画面部品を呼ぶだけ
 
 ### 完了条件
 
-「ログイン画面 → ボタン押下 → private 遷移 → 遷移後画面が見える」が動作し、上記の置き場所・継ぎ目が本ドキュメントの原則に沿って配置されていること。
+「ログイン画面 → ボタン押下 → private 遷移 → 遷移後画面が見える」が動作し、上記の置き場所・継ぎ目が本ドキュメントの原則（薄いルート・feature 内 colocation・一方向依存）に沿って配置されていること。
 
 ---
 
