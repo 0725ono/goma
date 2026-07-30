@@ -23,10 +23,12 @@
 ## 2. 開発構成と起動手順
 
 ```
-macOS ホスト                     Docker
-├─ mobile/   ← Expo をここで実行   ├─ Java API (Spring Boot) :8080
-│   npx expo start               └─ PostgreSQL :5432
+macOS ホスト                          Docker（ホスト公開ポート → コンテナ内部ポート）
+├─ mobile/   ← Expo をここで実行        ├─ Java API (Spring Boot)  :18080 → :8080
+│   npx expo start                    └─ PostgreSQL              :15432 → :5432
 ```
+
+> **ホスト側ポートについて**: 別プロジェクトがホストの 8080/5432 を使用するため、本プロジェクトはホスト側を **18080 / 15432** にずらしている。コンテナ内部は 8080/5432 のまま（Java・Flyway の設定変更は不要）。ホスト（mobile や DB クライアント）からアクセスする際は 18080/15432 を使う。
 
 モバイルは macOS ホストのターミナルから起動する。
 
@@ -47,7 +49,7 @@ npm スクリプト（[mobile/package.json](../mobile/package.json)）※すべ�
 | `npm run android` | `expo run:android` | Android ネイティブビルド |
 | `npm run ios` | `expo run:ios` | iOS シミュレータ |
 
-> **ポートの注意**: モバイルは **8081**（Metro 既定）を使う。`docker-compose.yml` で `8081:8081` を公開していると **Docker Desktop がホストの 8081 を占有**し、ホストの Expo と衝突する。そのため **8081 はコンテナで公開しない**（`docker-compose.yml` / `devcontainer.json` から除外済み）。コンテナで公開するのは `8080`(Java API) と `5432`(PostgreSQL) のみ。
+> **ポートの注意**: モバイルは **8081**（Metro 既定）を使う。`docker-compose.yml` で `8081:8081` を公開していると **Docker Desktop がホストの 8081 を占有**し、ホストの Expo と衝突する。そのため **8081 はコンテナで公開しない**（`docker-compose.yml` / `devcontainer.json` から除外済み）。コンテナがホストに公開するのは `18080`(Java API) と `15432`(PostgreSQL) のみ（内部はそれぞれ 8080/5432）。
 
 ---
 
@@ -155,7 +157,7 @@ iOS の内部配布・TestFlight・App Store はいずれも **Apple Developer P
 - [ ] モバイルを macOS ホストで実行する構成へ移行（`npx expo start` で iOS シミュレータ / Android 実機の疎通確認）
 - [ ] `docker-compose.yml` / `.devcontainer/.env` / `devcontainer.json` のポート設定を整理（Expo をホストに出す前提に統一）
 - [ ] `eas.json` を用意し Development Build のプロファイルを作成 → Android 実機で初回インストール
-- [ ] 実機からホストの Java API (8080) へ届くベースURL の持たせ方を設計（`.env` / `expo-constants`）
+- [ ] 実機からホストの Java API (18080) へ届くベースURL の持たせ方を設計（`.env` / `expo-constants`）
 - [ ] バックエンド（Java API + PostgreSQL）のクラウドデプロイ方針を決める
 - [ ] （必要時）iOS 配布のため Apple Developer Program に加入
 

@@ -19,7 +19,7 @@
     }
   },
 
-  // 8080: Java API, 5432: PostgreSQL（モバイルはホストで実行するため 8081 は不要）
-  "forwardPorts": [8080, 5432],
+  // ポート公開は docker-compose.yml で行う（ホスト 18080→API, 15432→PostgreSQL）。
+  // VS Code の forwardPorts はホスト側の 8080/5432（別プロジェクトが使用）と衝突するため使わない。
   "remoteUser": "vscode"
 }

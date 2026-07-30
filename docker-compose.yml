@@ -10,7 +10,9 @@ services:
     # コンテナが終了しないように永続化
     command: /bin/sh -c "while sleep 1000; do :; done"
     ports:
-      - "8080:8080" # Spring Boot用（Expo はホストで実行するため 8081 は公開しない）
+      # ホスト側は 18080（別プロジェクトが 8080 を使用するため回避）。コンテナ内は 8080 のまま
+      # Expo はホストで実行するため 8081 は公開しない
+      - "18080:8080"
     depends_on:
       - db
 
@@ -23,7 +25,8 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: family_schedule
     ports:
-      - "5432:5432"
+      # ホスト側は 15432（別プロジェクトの Postgres が 5432 を使用するため回避）
+      - "15432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
 
