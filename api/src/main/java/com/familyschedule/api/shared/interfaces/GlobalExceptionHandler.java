@@ -1,4 +1,4 @@
-package com.familyschedule.api.shared.presentation;
+package com.familyschedule.api.shared.interfaces;
 
 import java.util.List;
 import java.util.Map;

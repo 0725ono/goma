@@ -1,4 +1,4 @@
-package com.familyschedule.api.schedule.presentation.event;
+package com.familyschedule.api.schedule.interfaces.event;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;

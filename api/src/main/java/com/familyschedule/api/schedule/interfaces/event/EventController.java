@@ -1,4 +1,4 @@
-package com.familyschedule.api.schedule.presentation.event;
+package com.familyschedule.api.schedule.interfaces.event;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.familyschedule.api.schedule.domain.event.Event;
-import com.familyschedule.api.schedule.usecase.event.CreateEventCommand;
-import com.familyschedule.api.schedule.usecase.event.CreateEventUseCase;
-import com.familyschedule.api.schedule.usecase.event.ListEventsUseCase;
+import com.familyschedule.api.schedule.application.event.CreateEventCommand;
+import com.familyschedule.api.schedule.application.event.CreateEventUseCase;
+import com.familyschedule.api.schedule.application.event.ListEventsUseCase;
 
 import jakarta.validation.Valid;
 
