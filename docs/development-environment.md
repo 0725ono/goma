@@ -24,11 +24,11 @@
 
 ```
 macOS ホスト                          Docker（ホスト公開ポート → コンテナ内部ポート）
-├─ mobile/   ← Expo をここで実行        ├─ Java API (Spring Boot)  :18080 → :8080
+├─ mobile/   ← Expo をここで実行        ├─ Java API (Spring Boot)  :18080 → :18080
 │   npx expo start                    └─ PostgreSQL              :15432 → :5432
 ```
 
-> **ホスト側ポートについて**: 別プロジェクトがホストの 8080/5432 を使用するため、本プロジェクトはホスト側を **18080 / 15432** にずらしている。コンテナ内部は 8080/5432 のまま（Java・Flyway の設定変更は不要）。ホスト（mobile や DB クライアント）からアクセスする際は 18080/15432 を使う。
+> **ポートについて**: 8080/5432 は別プロジェクトが使用するため本プロジェクトでは避ける。**API は内外とも 18080 に統一**（`application.properties` の `server.port=18080`）。DB はコンテナ分離されており内部衝突が起きないため内部 5432 のまま、ホスト側のみ **15432**。ホスト（mobile や DB クライアント）からは 18080 / 15432 を使う。
 
 モバイルは macOS ホストのターミナルから起動する。
 
@@ -49,7 +49,7 @@ npm スクリプト（[mobile/package.json](../mobile/package.json)）※すべ�
 | `npm run android` | `expo run:android` | Android ネイティブビルド |
 | `npm run ios` | `expo run:ios` | iOS シミュレータ |
 
-> **ポートの注意**: モバイルは **8081**（Metro 既定）を使う。`docker-compose.yml` で `8081:8081` を公開していると **Docker Desktop がホストの 8081 を占有**し、ホストの Expo と衝突する。そのため **8081 はコンテナで公開しない**（`docker-compose.yml` / `devcontainer.json` から除外済み）。コンテナがホストに公開するのは `18080`(Java API) と `15432`(PostgreSQL) のみ（内部はそれぞれ 8080/5432）。
+> **ポートの注意**: モバイルは **8081**（Metro 既定）を使う。`docker-compose.yml` で `8081:8081` を公開していると **Docker Desktop がホストの 8081 を占有**し、ホストの Expo と衝突する。そのため **8081 はコンテナで公開しない**（`docker-compose.yml` / `devcontainer.json` から除外済み）。コンテナがホストに公開するのは `18080`(Java API) と `15432`(PostgreSQL) のみ。
 
 ---
 
