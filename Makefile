@@ -13,8 +13,8 @@ help: ## タスク一覧を表示
 
 # ---- API (Java / devcontainer 内) ----
 
-run: ## API dev サーバー起動（フォアグラウンド。Ctrl+C で停止）
-	cd api && ./mvnw spring-boot:run
+run: ## API dev サーバー起動（devプロファイル。フォアグラウンド。Ctrl+C で停止）
+	cd api && SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 
 stop: ## 起動しっぱなしの API を停止
 	-pkill -f "spring-boot:run"
