@@ -30,7 +30,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files（.env は端末固有の LAN IP を含むためコミットしない。雛形は .env.example）
+.env
 .env*.local
 
 # typescript
