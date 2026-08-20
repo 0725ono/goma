@@ -53,6 +53,60 @@ npm スクリプト（[mobile/package.json](../mobile/package.json)）※すべ�
 
 ---
 
+### 実機から API へ接続する（ベース URL の設定）
+
+実機の中で `localhost` は**実機自身**を指すため、mac 上の API には届かない。
+そのため実機では mac の LAN IP を明示的に指定する。
+
+```bash
+# 1. mac の LAN IP を調べる
+ipconfig getifaddr en0
+
+# 2. mobile/.env に書く（mobile/.env.example が雛形）
+EXPO_PUBLIC_API_URL=http://<調べた IP>:18080
+
+# 3. Expo を再起動する（-c が必須。理由は下記）
+cd mobile && npx expo start -c
+```
+
+> **`.env` を変えたら必ず `-c` を付けて再起動する。** `EXPO_PUBLIC_*` はビルド時に
+> バンドルへ埋め込まれるため、ファイルを書き換えただけでは反映されない。
+
+`.env` はマシン固有（DHCP で IP が変わりうる）なので **git にはコミットしない**（gitignore 済み）。
+共有するのは `.env.example` だけ。
+
+### ベース URL の解決順序
+
+[mobile/src/lib/api/client.ts](../mobile/src/lib/api/client.ts) が以下の順で決める。
+
+| 優先 | 条件 | 値 |
+|---|---|---|
+| 1 | `EXPO_PUBLIC_API_URL` が設定されている | その値（**実機はこれを使う**） |
+| 2 | Android エミュレータ | `http://10.0.2.2:18080`（エミュレータからホストを指す特別なアドレス） |
+| 3 | それ以外（iOS シミュレータ / Web） | `http://localhost:18080` |
+
+シミュレータ／エミュレータだけで開発する場合は `.env` を作らなくてよい。
+
+### 疎通しないときの切り分け
+
+**API 側 → mac → 実機**の順に、外側へ一段ずつ広げて確認する。
+
+| # | 確認 | 通らない場合 |
+|---|---|---|
+| 1 | devcontainer 内で `make run` して起動するか | ポート占有なら `make stop` してから再実行 |
+| 2 | mac から `curl http://<LAN IP>:18080/events` | Docker の公開ポート設定を確認（`docker-compose.yml`） |
+| 3 | 実機のブラウザで同じ URL を開く | 実機と mac が同じ Wi-Fi にいるか（ゲスト SSID に注意）、IP が変わっていないか |
+| 4 | アプリから接続 | `.env` の値と、`-c` 付きで再起動したかを確認 |
+
+よくある原因は **mac の IP が DHCP で変わっていた**か、**`-c` を付けずに再起動した**かのどちらか。
+
+> **Expo Web を実機ブラウザから開く場合**は CORS の許可が別途必要になる。
+> 現在 dev プロファイルが許可しているのは `http://localhost:8081` のみで、
+> LAN IP 経由（`http://<LAN IP>:8081`）は許可されていない。
+> 設定は `api/src/main/resources/application-dev.properties` の `app.cors.allowed-origins`。
+
+---
+
 ## 3. 確認体制（費用ゼロ）
 
 すべて macOS ホストで実行する。
@@ -154,10 +208,10 @@ iOS の内部配布・TestFlight・App Store はいずれも **Apple Developer P
 
 ## 9. TODO
 
-- [ ] モバイルを macOS ホストで実行する構成へ移行（`npx expo start` で iOS シミュレータ / Android 実機の疎通確認）
-- [ ] `docker-compose.yml` / `.devcontainer/.env` / `devcontainer.json` のポート設定を整理（Expo をホストに出す前提に統一）
+- [x] モバイルを macOS ホストで実行する構成へ移行（`npx expo start` で iOS シミュレータ / Android 実機の疎通確認）
+- [x] `docker-compose.yml` / `.devcontainer/.env` / `devcontainer.json` のポート設定を整理（Expo をホストに出す前提に統一）
 - [ ] `eas.json` を用意し Development Build のプロファイルを作成 → Android 実機で初回インストール
-- [ ] 実機からホストの Java API (18080) へ届くベースURL の持たせ方を設計（`.env` / `expo-constants`）
+- [x] 実機からホストの Java API (18080) へ届くベースURL の持たせ方を設計（`.env` の `EXPO_PUBLIC_API_URL` を採用。手順は「2. 開発構成と起動手順」を参照）
 - [ ] バックエンド（Java API + PostgreSQL）のクラウドデプロイ方針を決める
 - [ ] （必要時）iOS 配布のため Apple Developer Program に加入
 
