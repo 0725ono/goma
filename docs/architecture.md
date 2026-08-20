@@ -9,9 +9,9 @@
 
 フロントエンドとバックエンドの役割を明確に分離したハイブリッド開発環境を採用する。
 
-フロントエンド (Mobile): React Native (Expo SDK 56 / TypeScript) - ホストOS上で開発
+フロントエンド (Mobile): React Native / Expo (TypeScript) - ホストOS上で開発（SDK バージョンは mobile/package.json が正）
 
-バックエンド (API): Java (Spring Boot 3) - Docker内で稼働
+バックエンド (API): Java / Spring Boot - Docker内で稼働（バージョンは api/pom.xml が正）
 
 データベース: PostgreSQL - Docker内で稼働
 
@@ -90,6 +90,8 @@ UIの切り替え: 月間/週間カレンダーと、ガントチャートの表
 家族スペースに新しい予定・タスクが追加された際のプッシュ通知機能。
 
 6. バックエンド設計思想
+
+※ 実装レベルの詳細（パッケージ構成・依存の向き・例外の使い分け・機能追加の手順）は docs/api/architecture/backend-architecture.md を、エラー応答の契約は docs/api/architecture/error-contract.md を参照。
 
 過度な複雑化を避け、標準的で保守性の高いアーキテクチャを採用する。
 
