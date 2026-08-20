@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 
 import { getToken } from "@/lib/session";
 import { ApiError, NetworkError, type ProblemDetail } from "./errors";
+import { toErrorCode } from "./errorCodes";
 
 /**
  * API のベース URL。優先順位:
@@ -46,7 +47,7 @@ export async function apiFetch<T>(
     const problem: ProblemDetail | null = await res.json().catch(() => null);
     throw new ApiError(
       res.status,
-      problem?.code ?? null,
+      toErrorCode(problem?.code),
       problem?.detail,
       problem?.errors,
     );

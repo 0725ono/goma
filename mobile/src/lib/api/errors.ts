@@ -7,7 +7,9 @@
  * feature 側は ApiError.code で分岐し、HTTP や ProblemDetail の形は知らない。
  */
 
-/** バックエンドの ProblemDetail の形（拡張メンバー込み） */
+import type { ErrorCode } from "./errorCodes";
+
+/** バックエンドの ProblemDetail の形（拡張メンバー込み。code のワイヤ上の型はただの文字列） */
 export type ProblemDetail = {
   status: number;
   title?: string;
@@ -25,8 +27,8 @@ export type FieldError = {
 export class ApiError extends Error {
   constructor(
     readonly status: number,
-    /** バックエンドの code 拡張メンバー（例: "EVENT_TIME_INVALID"）。分岐はこれで行う */
-    readonly code: string | null,
+    /** バックエンドの code 拡張メンバー。分岐はこれで行う（未知の値は null に正規化済み） */
+    readonly code: ErrorCode | null,
     detail?: string,
     /** VALIDATION_ERROR 時のフィールド別エラー（フォームの setError に使う） */
     readonly fieldErrors?: FieldError[],
