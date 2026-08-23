@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import com.familyschedule.api.shared.domain.DomainRuleViolationException;
+import com.familyschedule.api.shared.domain.ErrorCode;
 
 /**
  * 予定（Event）のドメインモデル。
@@ -12,9 +13,12 @@ import com.familyschedule.api.shared.domain.DomainRuleViolationException;
  * 生成時に不変条件を必ず検証する。このとき投げる例外の型で意味を区別する:
  *
  * - IllegalArgumentException      … プログラミングエラー（呼び出し側のバグ）。
- *                                   id/spaceId はアプリ側が必ず採番・解決して渡すため、
- *                                   null はユーザー入力では起こり得ない → 500 が正しい。
- * - DomainRuleViolationException … ユーザー入力が破り得るドメインルール → 400 が正しい。
+ *                                   null・空の検査は DTO（CreateEventRequest）が先に弾くため、
+ *                                   ここに届くのは domain を直接呼ぶ経路の実装ミスだけ → 500 が正しい。
+ *                                   API 契約ではないため、専用のエラーコードは持たない
+ *                                   （DB の CHECK 制約と同じ「多重防御」の位置づけ）。
+ * - DomainRuleViolationException … 単一フィールドでは判定できないビジネスルール違反。
+ *                                   DTO では表現できず、ここが唯一の検査点 → 400 が正しい。
  */
 public record Event(
         UUID id,
@@ -24,19 +28,15 @@ public record Event(
         OffsetDateTime endAt) {
 
     public Event {
-        // プログラミングエラー（内部不変条件）: 破られたら実装バグ
+        // 多重防御（内部不変条件）: HTTP 経由では DTO が先に弾く。破られたら実装バグ
         if (id == null) throw new IllegalArgumentException("id is required");
         if (spaceId == null) throw new IllegalArgumentException("spaceId is required");
+        if (title == null || title.isBlank()) throw new IllegalArgumentException("title is required");
+        if (startAt == null || endAt == null) throw new IllegalArgumentException("startAt and endAt are required");
 
-        // ドメインルール（ユーザー入力が破り得る）: code は API 契約の一部
-        if (title == null || title.isBlank()) {
-            throw new DomainRuleViolationException("EVENT_TITLE_REQUIRED", "title is required");
-        }
-        if (startAt == null || endAt == null) {
-            throw new DomainRuleViolationException("EVENT_TIME_REQUIRED", "startAt and endAt are required");
-        }
+        // ドメインルール（複数フィールドにまたがる検査）: ここが唯一の検査点。code は API 契約の一部
         if (!endAt.isAfter(startAt)) {
-            throw new DomainRuleViolationException("EVENT_TIME_INVALID", "endAt must be after startAt");
+            throw new DomainRuleViolationException(ErrorCode.EVENT_TIME_INVALID, "endAt must be after startAt");
         }
     }
 }
