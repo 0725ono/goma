@@ -1,6 +1,14 @@
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useEvents } from "@/features/calendar/api/useEvents";
+import { getErrorMessage } from "@/lib/api/getErrorMessage";
 import type { Event } from "@/features/calendar/model/event";
 
 /** API の UTC 文字列をローカルタイムの「M/D HH:mm」に整形する（この画面ローカルの表示都合） */
@@ -21,7 +29,7 @@ const EventListItem = ({ event }: { event: Event }) => (
 );
 
 const EventList = () => {
-  const { data, isPending, isError, error } = useEvents();
+  const { data, isPending, isError, error, refetch } = useEvents();
 
   if (isPending) {
     return (
@@ -32,10 +40,14 @@ const EventList = () => {
   }
 
   if (isError) {
+    // 文言は必ず getErrorMessage を通す（error.message は英語の内部文言なので出さない）
     return (
       <View style={styles.centerBox}>
         <Text style={styles.errorText}>予定を取得できませんでした</Text>
-        <Text style={styles.errorDetail}>{error.message}</Text>
+        <Text style={styles.errorDetail}>{getErrorMessage(error)}</Text>
+        <Pressable style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryText}>再試行</Text>
+        </Pressable>
       </View>
     );
   }
@@ -92,6 +104,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   errorText: { fontSize: 15, fontWeight: "bold", color: "#D32F2F" },
-  errorDetail: { fontSize: 12, color: "#999" },
+  errorDetail: { fontSize: 13, color: "#666" },
+  retryButton: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#1976D2",
+  },
+  retryText: { color: "#FFF", fontSize: 14, fontWeight: "bold" },
   emptyText: { fontSize: 15, color: "#999" },
 });
