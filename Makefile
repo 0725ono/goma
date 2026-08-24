@@ -17,8 +17,8 @@ run: ## API dev サーバー起動（devプロファイル。フォアグラウ�
 	cd api && SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 
 stop: ## 起動しっぱなしの API を停止
-	-pkill -f "spring-boot:run"
-	-pkill -f "com.familyschedule.api.ApiApplication"
+	@-pkill -f "[s]pring-boot:run" || true
+	@-pkill -f "[c]om.familyschedule.api.ApiApplication" || true
 
 build: ## コンパイルのみ（動作確認せず素早くエラー検出）
 	cd api && ./mvnw -B -DskipTests compile
